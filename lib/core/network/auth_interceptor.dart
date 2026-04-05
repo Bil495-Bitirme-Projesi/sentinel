@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:sentinel/core/auth/session_notifier.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
 
 /// Her Dio isteğine otomatik olarak Bearer token ekler.
-/// 401 cevabında oturumu temizler.
+/// 401 cevabında oturumu temizler ve GoRouter'ı login'e yönlendirir.
 class AuthInterceptor extends Interceptor {
   /// Her istekten ÖNCE çalışır → Authorization header'ını ekler.
   @override
@@ -14,12 +15,13 @@ class AuthInterceptor extends Interceptor {
     handler.next(options);
   }
 
-  /// Hata cevabında çalışır → 401'de oturumu temizler.
+  /// Hata cevabında çalışır → 401'de oturumu temizler, login'e yönlendirir.
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
+      SessionStorage.sessionExpiredByServer = true; // login ekranı snackbar göstersin
       SessionStorage.clear();
-      // TODO: Global navigator ile login ekranına yönlendirme buraya eklenecek.
+      SessionNotifier.instance.onSessionChanged(); // GoRouter redirect'i tetikler
     }
     handler.next(err);
   }

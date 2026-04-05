@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sentinel/core/auth/session_notifier.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/screens/admin/admin_shell.dart';
@@ -61,6 +62,7 @@ abstract class AppRoutes {
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
+  refreshListenable: SessionNotifier.instance, // 401/logout → redirect yeniden çalışır
   redirect: _redirect,
   routes: [
     // ── Splash ──────────────────────────────────────────────────────────────
@@ -193,20 +195,23 @@ final appRouter = GoRouter(
 /// Her navigasyonda çalışan yetkilendirme guard'ı.
 ///
 /// Kurallar:
-/// 1. Oturum yoksa → /login (splash ve login hariç)
+/// 1. Oturum yoksa → /login (sunucu 401'iyse ?reason=expired ile)
 /// 2. Oturum varsa splash veya login'deyse → rol ana sayfasına yönlendir
 /// 3. Aksi halde yönlendirme yok (null döner)
 String? _redirect(BuildContext context, GoRouterState state) {
-  final loggedIn = SessionStorage.isLoggedIn;
-  final location = state.uri.toString();
+  final loggedIn  = SessionStorage.isLoggedIn;
+  final location  = state.uri.toString();
+  final atLogin   = location.startsWith(AppRoutes.login);
 
   // Oturum yoksa: sadece /login erişilebilir
-  if (!loggedIn && location != AppRoutes.login) {
-    return AppRoutes.login;
+  if (!loggedIn && !atLogin) {
+    // Sunucu 401 verdiyse login ekranına reason=expired gönder
+    final suffix = SessionStorage.sessionExpiredByServer ? '?reason=expired' : '';
+    return '${AppRoutes.login}$suffix';
   }
 
   // Oturum varsa: splash / login'den role'e göre yönlendir
-  if (loggedIn && (location == AppRoutes.splash || location == AppRoutes.login)) {
+  if (loggedIn && (location == AppRoutes.splash || atLogin)) {
     final role = SessionStorage.currentUser?.role;
     return role == UserRole.admin ? AppRoutes.adminCameras : AppRoutes.opAlerts;
   }

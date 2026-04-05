@@ -55,6 +55,10 @@ class SessionStorage {
   /// Oturum açmış kullanıcı (GET /api/auth/me yanıtı). Login yapılmamışsa null.
   static User? currentUser;
 
+  /// true → oturum sunucu tarafından 401 ile sonlandırıldı.
+  /// [AuthInterceptor] tarafından set edilir; [LoginScreen] okuyup sıfırlar.
+  static bool sessionExpiredByServer = false;
+
   /// Token'ı, sona erme süresini ve kullanıcı bilgisini birlikte kaydeder.
   static void set(
     String token, {
