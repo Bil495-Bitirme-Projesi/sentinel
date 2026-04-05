@@ -77,6 +77,14 @@ https://192.168.137.1/v3/api-docs
 
 Bu çıktı, özellikle yapay zeka destekli geliştirme araçlarıyla çalışırken faydalıdır. Araç, bu endpoint'e istek atarak OpenAPI şemasını okuyabilir; endpoint'leri, request/response modellerini ve parametre yapılarını doğrudan dokümantasyondan anlayıp geliştirme sürecinde bundan yararlanabilir.
 
+### fetch_openapi.dart
+
+CMS sunucusu self-signed sertifika kullandığından tarayıcı dışı araçlar `/v3/api-docs` adresine doğrudan erişemeyebilir. Repo kökündeki [`fetch_openapi.dart`](fetch_openapi.dart) scripti, `assets/certs/server.crt` ile yapılandırılmış bir Dart HTTP istemcisi kullanarak bu endpoint'e istek atar ve yanıtı `openapi.json` olarak kaydeder.
+
+```bash
+dart run fetch_openapi.dart
+```
+
 ## Proje Yapısı
 
 ```

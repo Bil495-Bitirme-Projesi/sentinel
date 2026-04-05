@@ -48,3 +48,5 @@ app.*.map.json
 mesaj_ici_input.txt
 
 prod.json
+
+openapi.json
