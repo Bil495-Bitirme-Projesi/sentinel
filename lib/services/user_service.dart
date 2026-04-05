@@ -91,4 +91,36 @@ class UserService {
         .map((e) => UserCameraAccess.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/admin/access/grant?userId=&cameraId=  →  201 Created
+  // ---------------------------------------------------------------------------
+
+  /// Kullanıcıya belirtilen kameraya erişim yetkisi verir.
+  ///
+  /// Kullanıcı zaten yetkili ise backend 409 döner.
+  Future<void> grantCameraAccess({
+    required int userId,
+    required int cameraId,
+  }) async {
+    await _cms.post(
+      '/admin/access/grant',
+      queryParameters: {'userId': userId, 'cameraId': cameraId},
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // DELETE /api/admin/access/revoke?userId=&cameraId=  →  204 No Content
+  // ---------------------------------------------------------------------------
+
+  /// Kullanıcının belirtilen kameraya erişim yetkisini kaldırır.
+  Future<void> revokeCameraAccess({
+    required int userId,
+    required int cameraId,
+  }) async {
+    await _cms.delete(
+      '/admin/access/revoke',
+      queryParameters: {'userId': userId, 'cameraId': cameraId},
+    );
+  }
 }

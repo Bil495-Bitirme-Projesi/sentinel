@@ -36,6 +36,7 @@ dependencies:
   get_it: ^8.0.3           # Service locator (ileride kullanılacak)
   dart_mappable: ^4.4.0    # fromJson/toJson/copyWith/==/toString kod üreticisi
   flutter_secure_storage: ^9.2.4  # Token'ı cihaz güvenli deposunda saklar
+  go_router: ^14.8.1        # Declarative routing (role-based, nested tabs)
 
 dev_dependencies:
   flutter_test:
