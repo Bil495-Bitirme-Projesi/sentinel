@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/core/network/minio_client.dart';
 import 'package:sentinel/models/user.dart';
@@ -51,13 +52,12 @@ class _ApiTestPageState extends State<ApiTestPage> {
   Future<void> _login() async {
     setState(() { _loading = true; _loginError = null; _token = null; });
     try {
-      final resp = await AuthService.instance.login(
+      await AuthService.instance.login(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
       );
-      // TokenStorage.set() auth_service içinde yapılıyor;
-      // AuthInterceptor bundan sonraki her isteğe otomatik header ekler.
-      setState(() { _token = resp.token; });
+      // login() içinde SessionStorage.set() çağrılır (token + currentUser).
+      setState(() { _token = SessionStorage.token; });
     } on DioException catch (e) {
       setState(() { _loginError = '${e.response?.statusCode} – ${e.response?.data}'; });
     } catch (e) {
@@ -71,7 +71,8 @@ class _ApiTestPageState extends State<ApiTestPage> {
   Future<void> _getUser() async {
     setState(() { _loading = true; _userError = null; _user = null; });
     try {
-      final user = await UserService.instance.getUser(_userIdCtrl.text.trim());
+      final id = int.tryParse(_userIdCtrl.text.trim()) ?? 0;
+      final user = await UserService.instance.getUser(id);
       setState(() { _user = user; });
     } on DioException catch (e) {
       setState(() { _userError = '${e.response?.statusCode} – ${e.response?.data}'; });
@@ -121,9 +122,11 @@ class _ApiTestPageState extends State<ApiTestPage> {
             if (_user != null) ...[
               const SizedBox(height: 8),
               const Text('Kullanıcı bilgisi ✅', style: TextStyle(color: Colors.green)),
-              Text('ID:    ${_user!.id}'),
-              Text('Ad:    ${_user!.name}'),
-              Text('Email: ${_user!.email}'),
+              Text('ID:      ${_user!.id}'),
+              Text('Ad:      ${_user!.name}'),
+              Text('Email:   ${_user!.email}'),
+              Text('Rol:     ${_user!.role.name}'),
+              Text('Aktif:   ${_user!.enabled}'),
             ],
           ],
         ),
