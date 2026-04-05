@@ -1,5 +1,6 @@
 {
   "API_BASE_URL": "https://192.168.137.1/api",
+  "MINIO_BASE_URL": "https://192.168.137.1:9443",
   "APP_ENV": "development"
 }
 

@@ -15,6 +15,13 @@ class AppConfig {
     defaultValue: 'https://192.168.137.1/api',
   );
 
+  /// MinIO nesne depolama servisinin base URL'i.
+  /// Trailing slash içermez.
+  static const String minioBaseUrl = String.fromEnvironment(
+    'MINIO_BASE_URL',
+    defaultValue: 'https://192.168.137.1:9000',
+  );
+
   /// Hangi ortamda çalıştığını belirtir: 'development' | 'production'
   static const String appEnv = String.fromEnvironment(
     'APP_ENV',

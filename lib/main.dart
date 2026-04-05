@@ -1,13 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:sentinel/core/network/dio_client.dart';
+import 'package:sentinel/core/network/cms_client.dart';
+import 'package:sentinel/core/network/minio_client.dart';
 import 'package:sentinel/models/user.dart';
 import 'package:sentinel/services/auth_service.dart';
 import 'package:sentinel/services/user_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await DioClient.init(); // sertifikayı yükler, Dio'yu yapılandırır
+  await CmsClient.init();    // REST API: sertifika + auth interceptor
+  await MinioClient.init();  // MinIO: sertifika, uzun timeout, auth yok
   runApp(const MyApp());
 }
 

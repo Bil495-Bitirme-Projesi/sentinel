@@ -1,4 +1,4 @@
-import 'package:sentinel/core/network/dio_client.dart';
+import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/models/user.dart';
 import 'package:dio/dio.dart';
 
@@ -12,11 +12,11 @@ class UserService {
 
   static final UserService instance = UserService._();
 
-  final Dio _dio = DioClient.instance;
+  final Dio _cms = CmsClient.instance;
 
   /// GET admin/user/{userId}
   Future<User> getUser(String userId) async {
-    final response = await _dio.get('/admin/users/$userId');
+    final response = await _cms.get('/admin/users/$userId');
     return User.fromJson(response.data as Map<String, dynamic>);
   }
 }

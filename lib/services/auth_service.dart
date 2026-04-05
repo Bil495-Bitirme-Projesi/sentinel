@@ -1,4 +1,4 @@
-import 'package:sentinel/core/network/dio_client.dart';
+import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/core/auth/token_storage.dart';
 import 'package:sentinel/models/auth_response.dart';
 import 'package:dio/dio.dart';
@@ -16,14 +16,14 @@ class AuthService {
 
   static final AuthService instance = AuthService._();
 
-  final Dio _dio = DioClient.instance;
+  final Dio _cms = CmsClient.instance;
 
   /// POST auth/login
   Future<AuthResponse> login({
     required String email,
     required String password,
   }) async {
-    final response = await _dio.post(
+    final response = await _cms.post(
       '/auth/login',
       data: {
         'email': email,
