@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:sentinel/core/auth/secure_token_store.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/models/auth_response.dart';
@@ -16,10 +17,12 @@ class AuthService {
 
   final Dio _cms = CmsClient.instance;
 
-  /// POST /api/auth/login
-  ///
-  /// Başarılı girişte token [SessionStorage]'a yazılır, ardından [getMe]
-  /// çağrılarak [SessionStorage.currentUser] doldurulur.
+  // ---------------------------------------------------------------------------
+  // POST /api/auth/login
+  // ---------------------------------------------------------------------------
+
+  /// Başarılı girişte token [SecureTokenStore]'a ve [SessionStorage]'a yazılır,
+  /// ardından [getMe] çağrılarak [SessionStorage.currentUser] doldurulur.
   Future<void> login({
     required String email,
     required String password,
@@ -31,7 +34,13 @@ class AuthService {
     final authResponse =
         AuthResponse.fromJson(response.data as Map<String, dynamic>);
 
-    // Token'ı kaydet; bundan sonra interceptor her isteğe header ekler.
+    // Kalıcı depoya yaz (uygulama kapatılsa da token korunur).
+    await SecureTokenStore.save(
+      authResponse.token,
+      expiresInMs: authResponse.expiresIn,
+    );
+
+    // In-memory oturumu başlat.
     SessionStorage.setToken(
       authResponse.token,
       expiresInMs: authResponse.expiresIn,
@@ -41,8 +50,10 @@ class AuthService {
     await getMe();
   }
 
-  /// GET /api/auth/me
-  ///
+  // ---------------------------------------------------------------------------
+  // GET /api/auth/me
+  // ---------------------------------------------------------------------------
+
   /// Oturum açmış kullanıcının kendi bilgilerini döner ve
   /// [SessionStorage.currentUser]'ı günceller.
   Future<User> getMe() async {
@@ -52,6 +63,63 @@ class AuthService {
     return user;
   }
 
-  /// Oturumu kapatır.
-  void logout() => SessionStorage.clear();
+  // ---------------------------------------------------------------------------
+  // Uygulama başlangıcı: oturumu geri yükle
+  // ---------------------------------------------------------------------------
+
+  /// Uygulama açılışında kalıcı depodan token okur ve geçerliyse oturumu
+  /// geri yükler.
+  ///
+  /// Dönüş değeri:
+  /// - `true`  → token geçerli, [SessionStorage] dolu, kullanıcı direkt içeriye alınabilir.
+  /// - `false` → token yok/geçersiz/401, login ekranı gösterilmeli.
+  ///
+  /// [CmsClient.init()] çağrısından SONRA, [runApp()] çağrısından ÖNCE
+  /// çağrılmalıdır.
+  static Future<bool> tryRestoreSession() async {
+    final token = await SecureTokenStore.read();
+    if (token == null) return false;
+
+    // Kalan süreyi hesapla.
+    final expiresAt = await SecureTokenStore.readExpiresAt();
+    final remainingMs = expiresAt != null
+        ? expiresAt.difference(DateTime.now()).inMilliseconds
+        : 0;
+
+    if (remainingMs <= 0) {
+      await SecureTokenStore.delete();
+      return false;
+    }
+
+    // Token'ı in-memory'e yükle; interceptor artık çalışır.
+    SessionStorage.setToken(token, expiresInMs: remainingMs);
+
+    try {
+      // /me ile hem token geçerliliğini doğrula hem de currentUser'ı doldur.
+      await AuthService.instance.getMe();
+      return true;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        // Token sunucu tarafında geçersiz → her yeri temizle.
+        await SecureTokenStore.delete();
+        SessionStorage.clear();
+      }
+      return false;
+    } catch (_) {
+      // Ağ hatası vs. — token geçerli olabilir, ama şu an ulaşılamıyor.
+      // Oturumu bellekte tutuyoruz, ama login ekranına yönlendirebilirsin.
+      SessionStorage.clear();
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Logout
+  // ---------------------------------------------------------------------------
+
+  /// Oturumu hem bellekten hem kalıcı depodan temizler.
+  Future<void> logout() async {
+    await SecureTokenStore.delete();
+    SessionStorage.clear();
+  }
 }

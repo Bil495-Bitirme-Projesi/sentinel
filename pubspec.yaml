@@ -35,6 +35,7 @@ dependencies:
   dio: ^5.8.0              # HTTP client
   get_it: ^8.0.3           # Service locator (ileride kullanılacak)
   dart_mappable: ^4.4.0    # fromJson/toJson/copyWith/==/toString kod üreticisi
+  flutter_secure_storage: ^9.2.4  # Token'ı cihaz güvenli deposunda saklar
 
 dev_dependencies:
   flutter_test:

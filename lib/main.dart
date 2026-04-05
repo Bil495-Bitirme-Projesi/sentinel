@@ -11,24 +11,34 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await CmsClient.init();    // REST API: sertifika + auth interceptor
   await MinioClient.init();  // MinIO: sertifika, uzun timeout, auth yok
-  runApp(const MyApp());
+
+  // Uygulama açılışında kalıcı depodan token geri yükle.
+  // true → SessionStorage dolu, kullanıcı doğrudan içeriye alınabilir.
+  // false → login ekranı gösterilmeli.
+  final sessionRestored = await AuthService.tryRestoreSession();
+
+  runApp(MyApp(sessionRestored: sessionRestored));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.sessionRestored});
+
+  final bool sessionRestored;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sentinel API Test',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-      home: const ApiTestPage(),
+      home: ApiTestPage(initiallyLoggedIn: sessionRestored),
     );
   }
 }
 
 class ApiTestPage extends StatefulWidget {
-  const ApiTestPage({super.key});
+  const ApiTestPage({super.key, this.initiallyLoggedIn = false});
+
+  final bool initiallyLoggedIn;
 
   @override
   State<ApiTestPage> createState() => _ApiTestPageState();
@@ -47,6 +57,14 @@ class _ApiTestPageState extends State<ApiTestPage> {
   String? _userError;
 
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initiallyLoggedIn) {
+      _token = SessionStorage.token;
+    }
+  }
 
   // ------------------------------------------------------------------ login
   Future<void> _login() async {
@@ -83,11 +101,37 @@ class _ApiTestPageState extends State<ApiTestPage> {
     }
   }
 
+  // ---------------------------------------------------------------- logout
+  Future<void> _logout() async {
+    setState(() { _loading = true; });
+    try {
+      await AuthService.instance.logout();
+      setState(() {
+        _token = null;
+        _user = null;
+        _loginError = null;
+        _userError = null;
+      });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
   // ------------------------------------------------------------------ build
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('API Test')),
+      appBar: AppBar(
+        title: const Text('API Test'),
+        actions: [
+          if (_token != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: _loading ? null : _logout,
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
