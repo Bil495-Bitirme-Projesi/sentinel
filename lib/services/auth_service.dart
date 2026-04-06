@@ -4,6 +4,7 @@ import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/models/auth_response.dart';
 import 'package:sentinel/models/user.dart';
+import 'package:sentinel/services/notification_service.dart';
 
 /// Kimlik doğrulama ile ilgili API çağrılarını yönetir.
 ///
@@ -48,6 +49,9 @@ class AuthService {
 
     // currentUser'ı doldur (token artık SessionStorage'da, interceptor çalışır).
     await getMe();
+
+    // FCM token'ını al ve backend'e kaydet.
+    await NotificationService.instance.init();
   }
 
   // ---------------------------------------------------------------------------

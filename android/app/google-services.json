@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "915867832562",
+    "project_id": "dev-smart-surveillance",
+    "storage_bucket": "dev-smart-surveillance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915867832562:android:84f39337199720e289006b",
+        "android_client_info": {
+          "package_name": "com.bitiriciler32.sentinel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVeO4SXseLzxVRm9xmv1RaEJbGwiwxf00"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

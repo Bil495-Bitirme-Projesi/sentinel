@@ -37,6 +37,8 @@ dependencies:
   dart_mappable: ^4.4.0    # fromJson/toJson/copyWith/==/toString kod üreticisi
   flutter_secure_storage: ^9.2.4  # Token'ı cihaz güvenli deposunda saklar
   go_router: ^14.8.1        # Declarative routing (role-based, nested tabs)
+  firebase_core: ^4.6.0
+  firebase_messaging: ^16.1.3
 
 dev_dependencies:
   flutter_test:

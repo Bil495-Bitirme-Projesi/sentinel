@@ -1,11 +1,14 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/core/network/minio_client.dart';
+import 'package:sentinel/firebase_options.dart';
 import 'package:sentinel/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await CmsClient.init();    // REST API: sertifika + auth interceptor
   await MinioClient.init();  // MinIO: sertifika, uzun timeout, auth yok
 
@@ -32,5 +35,3 @@ class SentinelApp extends StatelessWidget {
     );
   }
 }
-
-
