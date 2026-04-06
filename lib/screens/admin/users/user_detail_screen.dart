@@ -1,8 +1,15 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:sentinel/config/app_theme.dart';
 import 'package:sentinel/models/user.dart';
 import 'package:sentinel/models/user_camera_access.dart';
 import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/services/user_service.dart';
+import 'package:sentinel/widgets/app_card.dart';
+import 'package:sentinel/widgets/empty_state.dart';
+import 'package:sentinel/widgets/error_state.dart';
+import 'package:sentinel/widgets/info_tile.dart';
+import 'package:sentinel/widgets/section_header.dart';
+import 'package:sentinel/widgets/status_badge.dart';
 
 /// Kullanıcı detay ekranı.
 /// Kullanıcı bilgilerini ve atanmış kamera erişimlerini gösterir.
@@ -33,7 +40,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   Future<void> _loadData() async {
     setState(() { _loading = true; _error = null; });
     try {
-      // İkisini paralel çek
       final results = await Future.wait([
         UserService.instance.getUser(_userId),
         UserService.instance.getUserCameraAccess(_userId),
@@ -66,154 +72,73 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            const SizedBox(height: 8),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadData, child: const Text('Yeniden Dene')),
-          ],
-        ),
-      );
-    }
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) return ErrorState(message: _error!, onRetry: _loadData);
 
     final user = _user!;
+    final isAdmin = user.role == UserRole.admin;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: AppTheme.pagePadding,
       children: [
         // ── Kullanıcı bilgileri ───────────────────────────────────────────
-        _SectionHeader(title: 'Bilgiler'),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _InfoRow(label: 'ID',    value: user.id.toString()),
-                const Divider(height: 24),
-                _InfoRow(label: 'Ad',    value: user.name),
-                const Divider(height: 24),
-                _InfoRow(label: 'E-posta', value: user.email),
-                const Divider(height: 24),
-                _InfoRow(
-                  label: 'Rol',
-                  value: user.role == UserRole.admin ? 'ADMIN' : 'OPERATOR',
-                  valueColor: user.role == UserRole.admin
-                      ? Colors.deepPurple
-                      : Colors.blueGrey,
-                ),
-                const Divider(height: 24),
-                _InfoRow(
-                  label: 'Durum',
-                  value: user.enabled ? 'Aktif' : 'Pasif',
-                  valueColor: user.enabled ? Colors.green : Colors.red,
-                ),
-              ],
-            ),
+        SectionHeader('Bilgiler',
+            trailing: StatusBadge(
+              label: isAdmin ? 'ADMIN' : 'OPERATOR',
+              color: isAdmin ? AppTheme.primary : AppTheme.textMuted,
+            )),
+        AppCard(
+          child: Column(
+            children: [
+              InfoTile(icon: Icons.tag,            label: 'ID',      value: user.id.toString()),
+              InfoTile(icon: Icons.person_outline,  label: 'Ad',      value: user.name),
+              InfoTile(icon: Icons.email_outlined,  label: 'E-posta', value: user.email),
+              InfoTile(
+                icon: Icons.shield_outlined,
+                label: 'Rol',
+                value: isAdmin ? 'ADMIN' : 'OPERATOR',
+                valueColor: isAdmin ? AppTheme.primary : AppTheme.textMuted,
+              ),
+              InfoTile(
+                icon: Icons.circle_outlined,
+                label: 'Durum',
+                value: user.enabled ? 'Aktif' : 'Pasif',
+                valueColor: user.enabled ? AppTheme.success : AppTheme.danger,
+                showDivider: false,
+              ),
+            ],
           ),
         ),
 
         const SizedBox(height: 24),
 
         // ── Kamera erişimleri ─────────────────────────────────────────────
-        _SectionHeader(
-          title: 'Kamera Erişimleri',
-          trailing: Text(
-            '${_accesses.length} kamera',
-            style: Theme.of(context).textTheme.bodySmall,
+        SectionHeader(
+          'Kamera Erişimleri',
+          trailing: StatusBadge(
+            label: '${_accesses.length} kamera',
+            color: AppTheme.textMuted,
           ),
         ),
         if (_accesses.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Bu kullanıcıya atanmış kamera erişimi yok.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+          EmptyState(
+            icon: Icons.videocam_off_outlined,
+            message: 'Bu kullanıcıya atanmış kamera erişimi yok.',
           )
         else
-          Card(
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _accesses.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, index) {
-                final access = _accesses[index];
-                return ListTile(
-                  leading: const Icon(Icons.videocam_outlined),
-                  title: Text(access.cameraName),
-                  subtitle: Text('Kamera ID: ${access.cameraId}'),
-                  trailing: Text(
-                    'Erişim #${access.id}',
-                    style: Theme.of(context).textTheme.bodySmall,
+          AppCard(
+            child: Column(
+              children: [
+                for (int i = 0; i < _accesses.length; i++)
+                  InfoTile(
+                    icon: Icons.videocam_outlined,
+                    label: _accesses[i].cameraName,
+                    value: '#${_accesses[i].cameraId}',
+                    showDivider: i < _accesses.length - 1,
                   ),
-                );
-              },
+              ],
             ),
           ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Yardımcı widget'lar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.trailing});
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          if (trailing != null) trailing!,
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value, this.valueColor});
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: valueColor,
-          ),
-        ),
       ],
     );
   }
