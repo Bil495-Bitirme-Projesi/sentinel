@@ -101,6 +101,10 @@ class AuthService {
     try {
       // /me ile hem token geçerliliğini doğrula hem de currentUser'ı doldur.
       await AuthService.instance.getMe();
+
+      // Session geri yüklendi → FCM token'ını al ve backend'e kaydet.
+      await NotificationService.instance.init();
+
       return true;
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
@@ -123,6 +127,10 @@ class AuthService {
 
   /// Oturumu hem bellekten hem kalıcı depodan temizler.
   Future<void> logout() async {
+    // FCM token'ını backend'den ve FCM sunucusundan sil.
+    // Hata durumunda sessizce geçer — logout bloklanmaz.
+    await NotificationService.instance.unregister();
+
     await SecureTokenStore.delete();
     SessionStorage.clear();
   }
