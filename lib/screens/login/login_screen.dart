@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
 import 'package:sentinel/models/user_role.dart';
@@ -32,10 +33,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (reason == 'expired') {
         SessionStorage.sessionExpiredByServer = false; // bayrağı sıfırla
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.'),
+            backgroundColor: Colors.orange.shade800,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -64,7 +66,26 @@ class _LoginScreenState extends State<LoginScreen> {
         role == UserRole.admin ? AppRoutes.adminCameras : AppRoutes.opAlerts,
       );
     } catch (e) {
-      setState(() { _error = 'Giriş başarısız. E-posta veya parola hatalı.'; });
+      String errorMessage = 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
+
+      if (e is DioException) {
+        print('--- DIO HATASI ---');
+        print('Status Code: ${e.response?.statusCode}');
+        print('Response Data: ${e.response?.data}');
+
+        // Kullanıcıya gösterilecek daha şık hata mesajları
+        if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+          errorMessage = 'E-posta adresi veya şifre hatalı.';
+        } else {
+          errorMessage = 'Sunucu Hatası (${e.response?.statusCode ?? 'Timeout'})';
+        }
+      } else {
+        print('--- BİLİNMEYEN HATA ---');
+        print(e.toString());
+        errorMessage = 'Beklenmeyen Hata: $e';
+      }
+
+      setState(() { _error = errorMessage; });
     } finally {
       if (mounted) setState(() { _loading = false; });
     }
@@ -73,90 +94,148 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Başlık
-                const Icon(Icons.security, size: 72, color: Colors.deepPurple),
-                const SizedBox(height: 16),
-                Text(
-                  'Sentinel',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-                const SizedBox(height: 40),
+      body: Container(
+        // Arka plana şık bir kurumsal gradient (renk geçişi) ekliyoruz
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.deepPurple.shade900,
+              Colors.deepPurple.shade600,
+            ],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420), // Tablet/Web görünümü için form genişliğini sınırla
+              child: Card(
+                elevation: 12,
+                shadowColor: Colors.black45,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Logo ve Başlık
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.security, size: 56, color: Colors.deepPurple.shade700),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Sentinel',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.grey.shade900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sisteme giriş yapmak için bilgilerinizi girin',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                        ),
+                        const SizedBox(height: 40),
 
-                // E-posta
-                TextFormField(
-                  controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'E-posta',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'E-posta gerekli' : null,
-                ),
-                const SizedBox(height: 16),
+                        // E-posta
+                        TextFormField(
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'E-posta Adresi',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'E-posta gerekli' : null,
+                        ),
+                        const SizedBox(height: 20),
 
-                // Parola
-                TextFormField(
-                  controller: _passCtrl,
-                  obscureText: _obscure,
-                  decoration: InputDecoration(
-                    labelText: 'Parola',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+                        // Parola
+                        TextFormField(
+                          controller: _passCtrl,
+                          obscureText: _obscure,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(), // Enter'a basınca giriş yap
+                          decoration: InputDecoration(
+                            labelText: 'Parola',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                color: Colors.grey.shade600,
+                              ),
+                              onPressed: () => setState(() => _obscure = !_obscure),
+                            ),
+                          ),
+                          validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Parola gerekli' : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Hata mesajı (Kırmızı düz metin yerine modern kutu)
+                        if (_error != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 24),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: TextStyle(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (_error == null) const SizedBox(height: 8),
+
+                        // Giriş butonu
+                        FilledButton(
+                          onPressed: _loading ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                              : const Text(
+                                  'Giriş Yap',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)
+                                ),
+                        ),
+                      ],
                     ),
                   ),
-                  validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Parola gerekli' : null,
                 ),
-                const SizedBox(height: 8),
-
-                // Hata mesajı
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-
-                const SizedBox(height: 8),
-
-                // Giriş butonu
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: _loading
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text('Giriş Yap'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

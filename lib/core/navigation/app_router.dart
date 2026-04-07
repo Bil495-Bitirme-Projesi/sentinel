@@ -23,11 +23,6 @@ import 'package:sentinel/screens/splash_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Uygulama genelinde kullanılan rota yolları.
-///
-/// Kullanım örnekleri:
-///   context.go(AppRoutes.login)
-///   context.go(AppRoutes.opAlertDetail('42'))
-///   context.go(AppRoutes.adminCameraEdit('5'))
 abstract class AppRoutes {
   AppRoutes._();
 
@@ -54,6 +49,9 @@ abstract class AppRoutes {
 
   /// Kullanıcı detay: /admin/users/<id>
   static String adminUserDetail(String id) => '/admin/users/$id';
+
+  /// Kullanıcı düzenleme: /admin/users/<id>/edit
+  static String adminUserEdit(String id) => '/admin/users/$id/edit';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,7 +131,7 @@ final appRouter = GoRouter(
               path: AppRoutes.adminCameras,
               builder: (_, __) => const CamerasListScreen(),
               routes: [
-                // Yeni kamera (literal 'new' → parametre ':id'den önce eşleşir)
+                // Yeni kamera
                 GoRoute(
                   path: 'new',
                   builder: (_, __) => const CameraFormScreen(),
@@ -166,7 +164,14 @@ final appRouter = GoRouter(
                 GoRoute(
                   path: ':id',
                   builder: (_, state) => UserDetailScreen(
-                    userId: state.pathParameters['id']!,
+                    userId: int.parse(state.pathParameters['id']!),
+                  ),
+                ),
+                // Kullanıcı düzenleme: /admin/users/:id/edit
+                GoRoute(
+                  path: ':id/edit',
+                  builder: (_, state) => AddUserScreen(
+                    userId: int.parse(state.pathParameters['id']!),
                   ),
                 ),
               ],
@@ -193,11 +198,6 @@ final appRouter = GoRouter(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Her navigasyonda çalışan yetkilendirme guard'ı.
-///
-/// Kurallar:
-/// 1. Oturum yoksa → /login (sunucu 401'iyse ?reason=expired ile)
-/// 2. Oturum varsa splash veya login'deyse → rol ana sayfasına yönlendir
-/// 3. Aksi halde yönlendirme yok (null döner)
 String? _redirect(BuildContext context, GoRouterState state) {
   final loggedIn  = SessionStorage.isLoggedIn;
   final location  = state.uri.toString();
@@ -218,4 +218,3 @@ String? _redirect(BuildContext context, GoRouterState state) {
 
   return null; // Yönlendirme yok
 }
-

@@ -1,23 +1,14 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:sentinel/config/app_theme.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sentinel/services/user_service.dart';
+import 'package:sentinel/services/camera_service.dart';
 import 'package:sentinel/models/user.dart';
 import 'package:sentinel/models/user_camera_access.dart';
-import 'package:sentinel/models/user_role.dart';
-import 'package:sentinel/services/user_service.dart';
-import 'package:sentinel/widgets/app_card.dart';
-import 'package:sentinel/widgets/empty_state.dart';
-import 'package:sentinel/widgets/error_state.dart';
-import 'package:sentinel/widgets/info_tile.dart';
-import 'package:sentinel/widgets/section_header.dart';
-import 'package:sentinel/widgets/status_badge.dart';
+import 'package:sentinel/core/navigation/app_router.dart';
 
-/// Kullanıcı detay ekranı.
-/// Kullanıcı bilgilerini ve atanmış kamera erişimlerini gösterir.
 class UserDetailScreen extends StatefulWidget {
+  final int userId;
   const UserDetailScreen({super.key, required this.userId});
-
-  /// Router path parametresinden String olarak gelir.
-  final String userId;
 
   @override
   State<UserDetailScreen> createState() => _UserDetailScreenState();
@@ -25,121 +16,238 @@ class UserDetailScreen extends StatefulWidget {
 
 class _UserDetailScreenState extends State<UserDetailScreen> {
   User? _user;
-  List<UserCameraAccess> _accesses = [];
-  bool _loading = true;
-  String? _error;
+  List<UserCameraAccess> _assignedCameras = [];
+  bool _isLoading = true;
 
-  int get _userId => int.parse(widget.userId);
+  // Kullanıcının operatör olup olmadığını güvenli bir şekilde kontrol eden fonksiyon
+  bool get _isOperator {
+    if (_user == null) return false;
+    final roleStr = _user!.role.toString().toUpperCase();
+    // İçinde ADMIN geçmiyorsa veya OPERATOR geçiyorsa o bir operatördür
+    return roleStr.contains('OPERATOR') || !roleStr.contains('ADMIN');
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _fetchData();
   }
 
-  Future<void> _loadData() async {
-    setState(() { _loading = true; _error = null; });
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
     try {
-      final results = await Future.wait([
-        UserService.instance.getUser(_userId),
-        UserService.instance.getUserCameraAccess(_userId),
-      ]);
-      setState(() {
-        _user     = results[0] as User;
-        _accesses = results[1] as List<UserCameraAccess>;
-      });
+      _user = await UserService.instance.getUserById(widget.userId);
+
+      // Güvenli kontrolü kullanıyoruz
+      if (_isOperator) {
+        _assignedCameras = await CameraService.instance.getUserAccessList(widget.userId);
+      }
     } catch (e) {
-      setState(() { _error = e.toString(); });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     } finally {
-      setState(() { _loading = false; });
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteUser() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kullanıcıyı Sil'),
+        content: const Text('Bu kullanıcı kalıcı olarak silinecek. Onaylıyor musunuz?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        await UserService.instance.deleteUser(widget.userId);
+        if (mounted) context.go(AppRoutes.adminUsers);
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silinemedi: $e')));
+      }
+    }
+  }
+
+  Future<void> _showAddCameraBottomSheet() async {
+    try {
+      final allCameras = await CameraService.instance.getAllCameras();
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Kamera Erişimi Tanımla', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: allCameras.isEmpty
+                  ? const Center(child: Text('Sistemde eklenecek kamera bulunmuyor.'))
+                  : ListView.builder(
+                  itemCount: allCameras.length,
+                  itemBuilder: (context, index) {
+                    final camera = allCameras[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue.shade50,
+                        child: const Icon(Icons.videocam, size: 20, color: Colors.blue)
+                      ),
+                      title: Text(camera.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(camera.rtspUrl, overflow: TextOverflow.ellipsis),
+                      trailing: const Icon(Icons.add_circle_outline, color: Colors.blue),
+                      onTap: () async {
+                        Navigator.pop(context); // Menüyü kapat
+                        try {
+                          await CameraService.instance.grantAccess(widget.userId, camera.id);
+                          _fetchData(); // Listeyi yenile
+                        } catch (e) {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Atama başarısız: $e')));
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Kamera listesi alınamadı: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_user == null) return const Scaffold(body: Center(child: Text('Kullanıcı bulunamadı.')));
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_user?.name ?? 'Kullanıcı #${widget.userId}'),
+        title: Text(_user!.name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loading ? null : _loadData,
-          ),
+          IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: _deleteUser),
         ],
       ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return ErrorState(message: _error!, onRetry: _loadData);
-
-    final user = _user!;
-    final isAdmin = user.role == UserRole.admin;
-
-    return ListView(
-      padding: AppTheme.pagePadding,
-      children: [
-        // ── Kullanıcı bilgileri ───────────────────────────────────────────
-        SectionHeader('Bilgiler',
-            trailing: StatusBadge(
-              label: isAdmin ? 'ADMIN' : 'OPERATOR',
-              color: isAdmin ? AppTheme.primary : AppTheme.textMuted,
-            )),
-        AppCard(
-          child: Column(
-            children: [
-              InfoTile(icon: Icons.tag,            label: 'ID',      value: user.id.toString()),
-              InfoTile(icon: Icons.person_outline,  label: 'Ad',      value: user.name),
-              InfoTile(icon: Icons.email_outlined,  label: 'E-posta', value: user.email),
-              InfoTile(
-                icon: Icons.shield_outlined,
-                label: 'Rol',
-                value: isAdmin ? 'ADMIN' : 'OPERATOR',
-                valueColor: isAdmin ? AppTheme.primary : AppTheme.textMuted,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Kullanıcı Bilgi Kartı
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: _user!.enabled ? Colors.deepPurple.shade100 : Colors.grey.shade200,
+                      child: Icon(Icons.person, size: 35, color: _user!.enabled ? Colors.deepPurple : Colors.grey)
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_user!.email, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 4),
+                          // Rolü yazdırıyoruz
+                          Text('Rol: ${_user!.role.toString().split('.').last.toUpperCase()}', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                    Chip(
+                      label: Text(_user!.enabled ? "Aktif" : "Pasif", style: TextStyle(color: _user!.enabled ? Colors.green.shade700 : Colors.grey.shade700, fontWeight: FontWeight.bold)),
+                      backgroundColor: _user!.enabled ? Colors.green.shade50 : Colors.grey.shade200,
+                      side: BorderSide.none,
+                    )
+                  ],
+                ),
               ),
-              InfoTile(
-                icon: Icons.circle_outlined,
-                label: 'Durum',
-                value: user.enabled ? 'Aktif' : 'Pasif',
-                valueColor: user.enabled ? AppTheme.success : AppTheme.danger,
-                showDivider: false,
+            ),
+            const SizedBox(height: 24),
+
+            // ÇÖZÜM: Yeni güvenlik fonksiyonumuz ile kontrol ediyoruz
+            if (_isOperator) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Atanmış Kameralar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  FilledButton.icon(
+                    onPressed: _showAddCameraBottomSheet,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Erişim Ver'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: _assignedCameras.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.videocam_off, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 8),
+                            Text('Bu operatöre henüz kamera atanmamış.', style: TextStyle(color: Colors.grey.shade600))
+                          ],
+                        )
+                      )
+                    : ListView.builder(
+                        itemCount: _assignedCameras.length,
+                        itemBuilder: (context, index) {
+                          final access = _assignedCameras[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.videocam, color: Colors.blue),
+                              ),
+                              title: Text(access.cameraName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                tooltip: 'Erişimi Kaldır',
+                                onPressed: () async {
+                                  try {
+                                    await CameraService.instance.revokeAccess(widget.userId, access.cameraId);
+                                    _fetchData();
+                                  } catch (e) {
+                                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
-          ),
+          ],
         ),
-
-        const SizedBox(height: 24),
-
-        // ── Kamera erişimleri ─────────────────────────────────────────────
-        SectionHeader(
-          'Kamera Erişimleri',
-          trailing: StatusBadge(
-            label: '${_accesses.length} kamera',
-            color: AppTheme.textMuted,
-          ),
-        ),
-        if (_accesses.isEmpty)
-          EmptyState(
-            icon: Icons.videocam_off_outlined,
-            message: 'Bu kullanıcıya atanmış kamera erişimi yok.',
-          )
-        else
-          AppCard(
-            child: Column(
-              children: [
-                for (int i = 0; i < _accesses.length; i++)
-                  InfoTile(
-                    icon: Icons.videocam_outlined,
-                    label: _accesses[i].cameraName,
-                    value: '#${_accesses[i].cameraId}',
-                    showDivider: i < _accesses.length - 1,
-                  ),
-              ],
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

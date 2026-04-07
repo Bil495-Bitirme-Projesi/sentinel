@@ -1,17 +1,10 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:sentinel/config/app_theme.dart';
-import 'package:sentinel/core/navigation/app_router.dart';
-import 'package:sentinel/models/user.dart';
-import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/services/auth_service.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sentinel/services/user_service.dart';
-import 'package:sentinel/widgets/empty_state.dart';
-import 'package:sentinel/widgets/error_state.dart';
-import 'package:sentinel/widgets/status_badge.dart';
+import 'package:sentinel/models/user.dart';
+import 'package:sentinel/core/navigation/app_router.dart';
 
-/// Tüm kullanıcıları listeleyen ekran.
-/// Her satıra tıklanınca [UserDetailScreen]'e geçilir.
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
 
@@ -21,131 +14,221 @@ class UsersListScreen extends StatefulWidget {
 
 class _UsersListScreenState extends State<UsersListScreen> {
   List<User> _users = [];
-  bool _loading = true;
-  String? _error;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _fetchUsers();
   }
 
-  Future<void> _loadUsers() async {
-    setState(() { _loading = true; _error = null; });
+  // Kullanıcıları API'den çeken ana fonksiyon
+  Future<void> _fetchUsers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
       final users = await UserService.instance.getUsers();
-      setState(() { _users = users; });
+      if (mounted) {
+        setState(() {
+          _users = users;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() { _error = e.toString(); });
-    } finally {
-      setState(() { _loading = false; });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
-  }
-
-  Future<void> _logout() async {
-    await AuthService.instance.logout();
-    if (mounted) context.go(AppRoutes.login);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kullanıcılar'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loading ? null : _loadUsers,
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            tooltip: 'Kullanıcı Ekle',
-            onPressed: () => context.go(AppRoutes.adminUserNew),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Çıkış',
-            onPressed: _logout,
-          ),
-        ],
+          title: const Text('Kullanıcı Yönetimi'),
+          actions: [
+            // Listeyi Yenileme Butonu
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Yenile',
+              onPressed: _fetchUsers,
+            ),
+            // ÇIKIŞ YAP (LOGOUT) BUTONU EKLENDİ
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.redAccent),
+              tooltip: 'Çıkış Yap',
+              onPressed: () async {
+                // Kullanıcıya emin misin diye soralım
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Çıkış Yap'),
+                    content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Çıkış Yap')
+                      ),
+                    ],
+                  ),
+                );
+
+                // Eğer evet dediyse çıkış yap ve login'e yönlendir
+                if (confirm == true && mounted) {
+                  await AuthService.instance.logout();
+                  context.go(AppRoutes.login);
+                }
+              },
+            ),
+          ],
+        ),
+      // Yeni kullanıcı ekleme butonu
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          context.go(AppRoutes.adminUserNew);
+        },
+        icon: const Icon(Icons.person_add),
+        label: const Text('Yeni Ekle'),
       ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return ErrorState(message: _error!, onRetry: _loadUsers);
-    if (_users.isEmpty) {
-      return const EmptyState(
-        icon: Icons.people_outline,
-        message: 'Henüz kullanıcı yok.',
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 60),
+            const SizedBox(height: 16),
+            Text(
+              'Kullanıcılar yüklenemedi',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchUsers,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+            )
+          ],
+        ),
       );
     }
+
+    if (_users.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, color: Colors.grey.shade400, size: 80),
+            const SizedBox(height: 16),
+            Text(
+              'Henüz kullanıcı bulunmuyor',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 18),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Pull-to-refresh (Aşağı çekerek yenileme)
     return RefreshIndicator(
-      onRefresh: _loadUsers,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      onRefresh: _fetchUsers,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 80), // Alttan FAB için boşluk
         itemCount: _users.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 1, color: AppTheme.borderColor),
-        itemBuilder: (_, index) => _UserTile(
-          user: _users[index],
-          onTap: () => context.go(
-            AppRoutes.adminUserDetail(_users[index].id.toString()),
-          ),
-        ),
+        itemBuilder: (context, index) {
+          final user = _users[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: CircleAvatar(
+                backgroundColor: user.enabled ? Colors.blue.shade100 : Colors.grey.shade200,
+                radius: 25,
+                child: Icon(
+                  Icons.person,
+                  color: user.enabled ? Colors.blue.shade700 : Colors.grey,
+                  size: 30,
+                ),
+              ),
+              title: Text(
+                user.name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(user.email),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.deepPurple.shade200),
+                        ),
+                        child: Text(
+                          user.role.name.toUpperCase(),
+                          style: TextStyle(fontSize: 10, color: Colors.deepPurple.shade700, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (!user.enabled)
+                        const Text('• Pasif', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                    tooltip: 'Düzenle',
+                    onPressed: () {
+                      context.go(AppRoutes.adminUserEdit(user.id.toString()));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, color: Colors.grey),
+                    tooltip: 'Detay / Kamera Erişimi',
+                    onPressed: () {
+                      context.go(AppRoutes.adminUserDetail(user.id.toString()));
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _UserTile extends StatelessWidget {
-  const _UserTile({required this.user, required this.onTap});
-
-  final User user;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isAdmin = user.role == UserRole.admin;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: CircleAvatar(
-        backgroundColor: isAdmin ? AppTheme.primary : AppTheme.textMuted,
-        child: Text(
-          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      ),
-      title: Text(
-        user.name,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        user.email,
-        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          StatusBadge(
-            label: isAdmin ? 'ADMIN' : 'OPERATOR',
-            color: isAdmin ? AppTheme.primary : AppTheme.textMuted,
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            user.enabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
-            color: user.enabled ? AppTheme.success : AppTheme.danger,
-            size: 18,
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right, color: AppTheme.textMuted),
-        ],
-      ),
-      onTap: onTap,
     );
   }
 }

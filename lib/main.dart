@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:sentinel/config/app_theme.dart';
+// import 'package:sentinel/config/app_theme.dart'; // Eski temayı kullanmadığımız için yoruma aldım
 import 'package:sentinel/core/navigation/app_router.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/core/network/minio_client.dart';
@@ -46,8 +46,69 @@ class SentinelApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Sentinel',
-      theme: AppTheme.themeData,
+      debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
+
+      // İŞTE YENİ, ŞIK VE PROFESYONEL TEMAMIZ (CardThemeData olarak güncellendi)
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Roboto', // Veya projenizde kullandığınız bir font
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          primary: Colors.deepPurple,
+          secondary: Colors.blueAccent,
+          surface: Colors.grey.shade50,
+        ),
+
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shadowColor: Colors.deepPurple.withOpacity(0.1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        ),
+
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.red.shade300, width: 2),
+          ),
+          labelStyle: TextStyle(color: Colors.grey.shade600),
+          prefixIconColor: Colors.deepPurple,
+        ),
+
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
