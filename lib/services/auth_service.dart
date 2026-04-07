@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:sentinel/config/app_config.dart';
 import 'package:sentinel/core/auth/secure_token_store.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/core/network/cms_client.dart';
@@ -17,6 +20,39 @@ class AuthService {
   static final AuthService instance = AuthService._();
 
   final Dio _cms = CmsClient.instance;
+
+  // ---------------------------------------------------------------------------
+  // Sunucu erişilebilirlik kontrolü
+  // ---------------------------------------------------------------------------
+
+  /// Sunucuya erişilebilir olup olmadığını hafif bir `HEAD /auth/me` isteğiyle
+  /// kontrol eder.
+  ///
+  /// - Herhangi bir HTTP yanıtı (401 dahil) → `true` (sunucu ayakta).
+  /// - Bağlantı hatası / zaman aşımı → `false`.
+  ///
+  /// `isPing: true` extra flag'i sayesinde [AuthInterceptor] 401 geldiğinde
+  /// oturuma dokunmaz.
+  Future<bool> pingServer() async {
+    // Dio'nun connectTimeout'u per-request override edilemiyor; en hızlı
+    // çözüm ham TCP soketi — TLS el sıkışması olmadan sadece TCP katmanında
+    // 4 saniye içinde bağlanmayı dener.
+    try {
+      final uri  = Uri.parse(AppConfig.apiBaseUrl);
+      final port = uri.hasPort
+          ? uri.port
+          : (uri.scheme == 'https' ? 443 : 80);
+      final socket = await Socket.connect(
+        uri.host,
+        port,
+        timeout: const Duration(seconds: 4),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // POST /api/auth/login

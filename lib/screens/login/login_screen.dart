@@ -1,4 +1,7 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
 import 'package:sentinel/models/user_role.dart';
@@ -19,8 +22,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl   = TextEditingController();
 
   bool _loading  = false;
+  /// Başlangıçta true: ilk ping dönene kadar buton kilitli.
+  /// Ping başarılıysa direkt false olur (banner açılmaz).
+  /// Ping başarısızsa banner açılır, polling biter biter false olur.
+  bool _polling  = true;
   bool _obscure  = true;
   String? _error;
+
+  Timer? _pollTimer;
 
   @override
   void initState() {
@@ -40,13 +49,76 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     });
+    // Ekran açılır açılmaz sunucuya erişilebilir mi kontrol et.
+    _checkServerOnInit();
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sunucu bağlantı bekleme (polling)
+  // ---------------------------------------------------------------------------
+
+  /// Her [_kPollInterval]'de bir [AuthService.pingServer()] çağırır.
+  /// Sunucu cevap verdiğinde banner'ı kapatır ve butonu açar.
+  static const _kPollInterval = Duration(seconds: 5);
+
+  /// Ekran ilk açıldığında tek bir ping atar; sunucuya ulaşılamazsa
+  /// banner'ı gösterip polling'i başlatır. Böylece kullanıcı submit'e
+  /// basmadan sorundan haberdar olur.
+  Future<void> _checkServerOnInit() async {
+    final reachable = await AuthService.instance.pingServer();
+    if (!mounted) return;
+    if (reachable) {
+      // Server açık → banner göstermeden butonu serbest bırak.
+      setState(() { _polling = false; });
+    } else {
+      // Server kapalı → banner aç, polling başlat.
+      _showServerUnreachableBanner();
+      _startPolling();
+    }
+  }
+
+  /// Ekranın üstüne kalıcı "bağlantı bekleniyor" banner'ı basar.
+  void _showServerUnreachableBanner() {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        content: const Text('Sunucuya ulaşılamıyor. Bağlantı bekleniyor…'),
+        leading: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _stopPolling,
+            child: const Text('İptal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_kPollInterval, (_) async {
+      final reachable = await AuthService.instance.pingServer();
+      if (reachable && mounted) _stopPolling();
+    });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    setState(() { _polling = false; });
   }
 
   Future<void> _submit() async {
@@ -63,7 +135,24 @@ class _LoginScreenState extends State<LoginScreen> {
       context.go(
         role == UserRole.admin ? AppRoutes.adminCameras : AppRoutes.opAlerts,
       );
-    } catch (e) {
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final isConnError =
+          e.type == DioExceptionType.connectionError   ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout    ||
+          e.type == DioExceptionType.sendTimeout;
+
+      if (isConnError) {
+        // Buton açıkken (init ping başarılıydı) submit bağlantı hatası aldı.
+        // Polling döngüsüne gerek yok — init ping zaten kontrolü yapıyor.
+        // TODO(Seçenek-A): global "sunucu erişilemiyor" mekanizmasını tetikle.
+        setState(() { _error = 'Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.'; });
+      } else {
+        setState(() { _error = 'Giriş başarısız. E-posta veya parola hatalı.'; });
+      }
+    } catch (_) {
+      if (!mounted) return;
       setState(() { _error = 'Giriş başarısız. E-posta veya parola hatalı.'; });
     } finally {
       if (mounted) setState(() { _loading = false; });
@@ -144,16 +233,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Giriş butonu
                 FilledButton(
-                  onPressed: _loading ? null : _submit,
+                  onPressed: (_loading || _polling) ? null : _submit,
                   child: _loading
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Text('Giriş Yap'),
                 ),
               ],
