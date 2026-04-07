@@ -51,7 +51,12 @@ class AuthService {
     await getMe();
 
     // FCM token'ını al ve backend'e kaydet.
-    await NotificationService.instance.init();
+    // Hata durumunda sessizce geç — FCM başarısızlığı login'i bloklamaz.
+    try {
+      await NotificationService.instance.init();
+    } catch (_) {
+      // Bildirim servisi başlatılamadı; uygulama kullanılabilir olmaya devam eder.
+    }
   }
 
   // ---------------------------------------------------------------------------

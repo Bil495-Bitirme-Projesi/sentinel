@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
+import 'package:sentinel/core/network/dio_exception_ext.dart';
+import 'package:sentinel/models/api_error.dart';
 import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/services/auth_service.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
@@ -65,27 +67,22 @@ class _LoginScreenState extends State<LoginScreen> {
       context.go(
         role == UserRole.admin ? AppRoutes.adminCameras : AppRoutes.opAlerts,
       );
-    } catch (e) {
-      String errorMessage = 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-
-      if (e is DioException) {
-        print('--- DIO HATASI ---');
-        print('Status Code: ${e.response?.statusCode}');
-        print('Response Data: ${e.response?.data}');
-
-        // Kullanıcıya gösterilecek daha şık hata mesajları
-        if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+    } on DioException catch (e) {
+      final httpErr = e.toHttpError();
+      String errorMessage;
+      if (httpErr is ApiError) {
+        if (httpErr.status == 401 || httpErr.status == 403) {
           errorMessage = 'E-posta adresi veya şifre hatalı.';
         } else {
-          errorMessage = 'Sunucu Hatası (${e.response?.statusCode ?? 'Timeout'})';
+          errorMessage = 'Sunucu hatası: ${httpErr.message}';
         }
       } else {
-        print('--- BİLİNMEYEN HATA ---');
-        print(e.toString());
-        errorMessage = 'Beklenmeyen Hata: $e';
+        // NetworkError: bağlantı yok, timeout vb.
+        errorMessage = 'Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.';
       }
-
       setState(() { _error = errorMessage; });
+    } catch (_) {
+      setState(() { _error = 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.'; });
     } finally {
       if (mounted) setState(() { _loading = false; });
     }
@@ -243,3 +240,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

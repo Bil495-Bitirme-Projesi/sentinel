@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/services/user_service.dart';
+import 'package:sentinel/models/create_user_request.dart';
+import 'package:sentinel/models/update_user_request.dart';
+import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
 
 class AddUserScreen extends StatefulWidget {
@@ -57,18 +60,22 @@ class _AddUserScreenState extends State<AddUserScreen> {
     try {
       if (widget.userId == null) {
         await UserService.instance.createUser(
-          _nameController.text.trim(),
-          _emailController.text.trim(),
-          _passwordController.text,
-          _selectedRole,
+          CreateUserRequest(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            role: _selectedRole == 'ADMIN' ? UserRole.admin : UserRole.operator_,
+            enabled: _isEnabled,
+          ),
         );
       } else {
         await UserService.instance.updateUser(
           widget.userId!,
-          _nameController.text.trim(),
-          _emailController.text.trim(),
-          _selectedRole,
-          _isEnabled
+          UpdateUserRequest(
+            name: _nameController.text.trim(),
+            role: _selectedRole == 'ADMIN' ? UserRole.admin : UserRole.operator_,
+            enabled: _isEnabled,
+          ),
         );
       }
       if (mounted) context.go(AppRoutes.adminUsers);

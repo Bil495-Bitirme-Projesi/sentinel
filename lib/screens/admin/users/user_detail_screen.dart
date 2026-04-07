@@ -2,6 +2,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/services/user_service.dart';
 import 'package:sentinel/services/camera_service.dart';
+import 'package:sentinel/services/user_camera_access_service.dart';
 import 'package:sentinel/models/user.dart';
 import 'package:sentinel/models/user_camera_access.dart';
 import 'package:sentinel/core/navigation/app_router.dart';
@@ -40,7 +41,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
       // Güvenli kontrolü kullanıyoruz
       if (_isOperator) {
-        _assignedCameras = await CameraService.instance.getUserAccessList(widget.userId);
+        _assignedCameras = await UserCameraAccessService.instance.getUserAccessList(widget.userId);
       }
     } catch (e) {
       if (mounted) {
@@ -114,7 +115,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       onTap: () async {
                         Navigator.pop(context); // Menüyü kapat
                         try {
-                          await CameraService.instance.grantAccess(widget.userId, camera.id);
+                          await UserCameraAccessService.instance.grantAccess(widget.userId, camera.id);
                           _fetchData(); // Listeyi yenile
                         } catch (e) {
                           if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Atama başarısız: $e')));
@@ -232,7 +233,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                 tooltip: 'Erişimi Kaldır',
                                 onPressed: () async {
                                   try {
-                                    await CameraService.instance.revokeAccess(widget.userId, access.cameraId);
+                                    await UserCameraAccessService.instance.revokeAccess(widget.userId, access.cameraId);
                                     _fetchData();
                                   } catch (e) {
                                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));

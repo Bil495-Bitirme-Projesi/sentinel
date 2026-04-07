@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/models/camera.dart';
-import 'package:sentinel/models/user_camera_access.dart';
 
 class CameraService {
   CameraService._();
@@ -41,26 +40,5 @@ class CameraService {
 
   Future<void> deleteCamera(int id) async {
     await _cms.delete('/admin/cameras/$id');
-  }
-
-  // ── KULLANICI ERİŞİM (ACCESS) İŞLEMLERİ ─────────────────────────────────
-
-  Future<List<UserCameraAccess>> getUserAccessList(int userId) async {
-    final response = await _cms.get('/admin/access/$userId');
-    return (response.data as List).map((json) => UserCameraAccessMapper.fromMap(json as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> grantAccess(int userId, int cameraId) async {
-    await _cms.post('/admin/access/grant', queryParameters: {
-      'userId': userId,
-      'cameraId': cameraId
-    });
-  }
-
-  Future<void> revokeAccess(int userId, int cameraId) async {
-    await _cms.delete('/admin/access/revoke', queryParameters: {
-      'userId': userId,
-      'cameraId': cameraId
-    });
   }
 }

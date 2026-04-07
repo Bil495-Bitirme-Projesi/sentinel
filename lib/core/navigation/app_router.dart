@@ -198,6 +198,11 @@ final appRouter = GoRouter(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Her navigasyonda çalışan yetkilendirme guard'ı.
+///
+/// Kurallar:
+/// 1. Oturum yoksa → /login (sunucu 401'iyse ?reason=expired ile)
+/// 2. Oturum varsa splash veya login'deyse → rol ana sayfasına yönlendir
+/// 3. Aksi halde yönlendirme yok (null döner)
 String? _redirect(BuildContext context, GoRouterState state) {
   final loggedIn  = SessionStorage.isLoggedIn;
   final location  = state.uri.toString();
