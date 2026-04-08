@@ -16,10 +16,43 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  GoRouter? _router;
+  String? _previousLocation;
+
   @override
   void initState() {
     super.initState();
     _fetchCameras();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.of(context);
+    if (_router != router) {
+      _router?.routerDelegate.removeListener(_onRouteChange);
+      _router = router;
+      _router!.routerDelegate.addListener(_onRouteChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChange);
+    super.dispose();
+  }
+
+  void _onRouteChange() {
+    if (!mounted) return;
+    final location =
+        _router!.routerDelegate.currentConfiguration.uri.toString();
+    final wasInSubRoute = _previousLocation != null &&
+        _previousLocation != AppRoutes.adminCameras &&
+        _previousLocation!.startsWith(AppRoutes.adminCameras);
+    if (location == AppRoutes.adminCameras && wasInSubRoute) {
+      _fetchCameras();
+    }
+    _previousLocation = location;
   }
 
   Future<void> _fetchCameras() async {

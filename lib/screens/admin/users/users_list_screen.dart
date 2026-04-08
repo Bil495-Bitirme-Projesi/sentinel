@@ -17,10 +17,43 @@ class _UsersListScreenState extends State<UsersListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  GoRouter? _router;
+  String? _previousLocation;
+
   @override
   void initState() {
     super.initState();
     _fetchUsers();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.of(context);
+    if (_router != router) {
+      _router?.routerDelegate.removeListener(_onRouteChange);
+      _router = router;
+      _router!.routerDelegate.addListener(_onRouteChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChange);
+    super.dispose();
+  }
+
+  void _onRouteChange() {
+    if (!mounted) return;
+    final location =
+        _router!.routerDelegate.currentConfiguration.uri.toString();
+    final wasInSubRoute = _previousLocation != null &&
+        _previousLocation != AppRoutes.adminUsers &&
+        _previousLocation!.startsWith(AppRoutes.adminUsers);
+    if (location == AppRoutes.adminUsers && wasInSubRoute) {
+      _fetchUsers();
+    }
+    _previousLocation = location;
   }
 
   // Kullanıcıları API'den çeken ana fonksiyon
