@@ -85,6 +85,11 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       final allCameras = await CameraService.instance.getAllCameras();
       if (!mounted) return;
 
+      // ÇÖZÜM BURADA: Halihazırda atanmış olan kameraları listeden filtreliyoruz
+      final availableCameras = allCameras.where((camera) {
+        return !_assignedCameras.any((assigned) => assigned.cameraId == camera.id);
+      }).toList();
+
       showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -98,12 +103,18 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               ),
               const Divider(height: 1),
               Expanded(
-                child: allCameras.isEmpty
-                  ? const Center(child: Text('Sistemde eklenecek kamera bulunmuyor.'))
+                // Artık allCameras yerine filtrelenmiş availableCameras listesini kullanıyoruz
+                child: availableCameras.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text('Eklenebilecek yeni bir kamera bulunmuyor.', style: TextStyle(fontSize: 16)),
+                      )
+                    )
                   : ListView.builder(
-                  itemCount: allCameras.length,
+                  itemCount: availableCameras.length,
                   itemBuilder: (context, index) {
-                    final camera = allCameras[index];
+                    final camera = availableCameras[index];
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Colors.blue.shade50,
@@ -185,7 +196,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ÇÖZÜM: Yeni güvenlik fonksiyonumuz ile kontrol ediyoruz
+            // Sadece OPERATOR ise Kamera Erişim Listesini Göster
             if (_isOperator) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

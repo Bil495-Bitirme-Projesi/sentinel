@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/services/user_service.dart';
 import 'package:sentinel/models/create_user_request.dart';
@@ -37,7 +38,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
       _nameController.text = user.name;
       _emailController.text = user.email;
 
-      // ÇÖZÜM BURADA: Backend'den gelen rol formatı ne olursa olsun,
+      // Backend'den gelen rol formatı ne olursa olsun,
       // Dropdown'ın çökmesini engelleyen güvenli kontrol:
       final roleStr = user.role.toString().toUpperCase();
       if (roleStr.contains('ADMIN')) {
@@ -57,6 +58,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+
     try {
       if (widget.userId == null) {
         await UserService.instance.createUser(
@@ -79,8 +81,53 @@ class _AddUserScreenState extends State<AddUserScreen> {
         );
       }
       if (mounted) context.go(AppRoutes.adminUsers);
+
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('İşlem başarısız: $e')));
+      // --- AKILLI HATA YAKALAMA BAŞLANGICI ---
+      String errorMessage = 'İşlem başarısız oldu.';
+
+      if (e is DioException && e.response != null) {
+        final errorData = e.response?.data.toString().toLowerCase() ?? '';
+        final statusCode = e.response?.statusCode;
+
+        // Backend 409 Conflict dönerse VEYA hata mesajı email'in var olduğunu söylüyorsa
+        if (statusCode == 409 ||
+            errorData.contains('email') ||
+            errorData.contains('exists') ||
+            errorData.contains('unique') ||
+            errorData.contains('kullanımda') ||
+            errorData.contains('already')) {
+
+          errorMessage = 'Bu e-posta adresi sistemde zaten kayıtlı. Lütfen farklı bir e-posta adresi girin.';
+
+        } else {
+          // Farklı bir backend hatasıysa
+          errorMessage = 'Sunucu Hatası: ${e.response?.data}';
+        }
+      } else {
+        errorMessage = 'Bağlantı Hatası: $e';
+      }
+
+      // Şık, ikonlu ve kırmızı hata bildirimi
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text(errorMessage, style: const TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
+          )
+        );
+      }
+      // --- AKILLI HATA YAKALAMA BİTİŞİ ---
+
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -113,15 +160,21 @@ class _AddUserScreenState extends State<AddUserScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Ad Soyad', prefixIcon: Icon(Icons.person),
                     ),
-                    validator: (val) => val == null || val.isEmpty ? 'Gerekli alan' : null,
+                    validator: (val) => val == null || val.trim().isEmpty ? 'Gerekli alan' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
                     enabled: !isEditing, // Düzenlerken E-posta değiştirilemez
+                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'E-posta', prefixIcon: Icon(Icons.email),
                     ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'E-posta gerekli';
+                      if (!val.contains('@')) return 'Geçerli bir e-posta girin';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   if (!isEditing) ...[
@@ -159,7 +212,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: _submitForm,
-                    child: Text(isEditing ? 'Değişiklikleri Kaydet' : 'Kullanıcıyı Oluştur', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(isEditing ? 'Değişiklikleri Kaydet' : 'Kullanıcıyı Oluştur', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ],
               ),
