@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:sentinel/core/auth/secure_token_store.dart';
+import 'package:sentinel/core/auth/session_notifier.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
 import 'package:sentinel/core/network/cms_client.dart';
 import 'package:sentinel/models/auth_response.dart';
@@ -134,9 +135,15 @@ class AuthService {
   Future<void> logout() async {
     // FCM token'ını backend'den ve FCM sunucusundan sil.
     // Hata durumunda sessizce geçer — logout bloklanmaz.
-    await NotificationService.instance.unregister();
+    try {
+      await NotificationService.instance.unregister();
+    } catch (_) {
+      // ignore: avoid_print
+      print('[Auth] logout: unregister başarısız (sessizce geçildi)');
+    }
 
     await SecureTokenStore.delete();
     SessionStorage.clear();
+    SessionNotifier.instance.onSessionChanged(); // redirect guard login'e yönlendirir
   }
 }

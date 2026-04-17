@@ -33,11 +33,6 @@ class CameraMapper extends ClassMapperBase<Camera> {
     'detectionEnabled',
     _$detectionEnabled,
   );
-  static double _$threshold(Camera v) => v.threshold;
-  static const Field<Camera, double> _f$threshold = Field(
-    'threshold',
-    _$threshold,
-  );
 
   @override
   final MappableFields<Camera> fields = const {
@@ -45,7 +40,6 @@ class CameraMapper extends ClassMapperBase<Camera> {
     #name: _f$name,
     #rtspUrl: _f$rtspUrl,
     #detectionEnabled: _f$detectionEnabled,
-    #threshold: _f$threshold,
   };
 
   static Camera _instantiate(DecodingData data) {
@@ -54,7 +48,6 @@ class CameraMapper extends ClassMapperBase<Camera> {
       name: data.dec(_f$name),
       rtspUrl: data.dec(_f$rtspUrl),
       detectionEnabled: data.dec(_f$detectionEnabled),
-      threshold: data.dec(_f$threshold),
     );
   }
 
@@ -104,13 +97,7 @@ extension CameraValueCopy<$R, $Out> on ObjectCopyWith<$R, Camera, $Out> {
 
 abstract class CameraCopyWith<$R, $In extends Camera, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({
-    int? id,
-    String? name,
-    String? rtspUrl,
-    bool? detectionEnabled,
-    double? threshold,
-  });
+  $R call({int? id, String? name, String? rtspUrl, bool? detectionEnabled});
   CameraCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -121,28 +108,21 @@ class _CameraCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Camera, $Out>
   @override
   late final ClassMapperBase<Camera> $mapper = CameraMapper.ensureInitialized();
   @override
-  $R call({
-    int? id,
-    String? name,
-    String? rtspUrl,
-    bool? detectionEnabled,
-    double? threshold,
-  }) => $apply(
-    FieldCopyWithData({
-      if (id != null) #id: id,
-      if (name != null) #name: name,
-      if (rtspUrl != null) #rtspUrl: rtspUrl,
-      if (detectionEnabled != null) #detectionEnabled: detectionEnabled,
-      if (threshold != null) #threshold: threshold,
-    }),
-  );
+  $R call({int? id, String? name, String? rtspUrl, bool? detectionEnabled}) =>
+      $apply(
+        FieldCopyWithData({
+          if (id != null) #id: id,
+          if (name != null) #name: name,
+          if (rtspUrl != null) #rtspUrl: rtspUrl,
+          if (detectionEnabled != null) #detectionEnabled: detectionEnabled,
+        }),
+      );
   @override
   Camera $make(CopyWithData data) => Camera(
     id: data.get(#id, or: $value.id),
     name: data.get(#name, or: $value.name),
     rtspUrl: data.get(#rtspUrl, or: $value.rtspUrl),
     detectionEnabled: data.get(#detectionEnabled, or: $value.detectionEnabled),
-    threshold: data.get(#threshold, or: $value.threshold),
   );
 
   @override

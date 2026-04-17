@@ -8,13 +8,11 @@ class Camera with CameraMappable {
   final String name;
   final String rtspUrl;
   final bool detectionEnabled;
-  final double threshold;
 
   Camera({
     required this.id,
     required this.name,
     required this.rtspUrl,
     required this.detectionEnabled,
-    required this.threshold,
   });
 }

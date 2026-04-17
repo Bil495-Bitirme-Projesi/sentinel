@@ -20,23 +20,19 @@ class CameraService {
     return CameraMapper.fromMap(response.data as Map<String, dynamic>);
   }
 
-  // Threshold parametresi eklendi
-    Future<void> createCamera(String name, String rtspUrl, double threshold) async {
-      await _cms.post('/admin/cameras', data: {
-        "name": name,
-        "rtspUrl": rtspUrl,
-        "threshold": threshold, // Backend'in beklediği zorunlu alan
-      });
-    }
+  Future<void> createCamera(String name, String rtspUrl) async {
+    await _cms.post('/admin/cameras', data: {
+      "name": name,
+      "rtspUrl": rtspUrl,
+    });
+  }
 
-    // Threshold parametresi eklendi
-    Future<void> updateCamera(int id, String name, String rtspUrl, double threshold) async {
-      await _cms.put('/admin/cameras/$id', data: {
-        "name": name,
-        "rtspUrl": rtspUrl,
-        "threshold": threshold, // Backend'in beklediği zorunlu alan
-      });
-    }
+  Future<void> updateCamera(int id, String name, String rtspUrl) async {
+    await _cms.put('/admin/cameras/$id', data: {
+      "name": name,
+      "rtspUrl": rtspUrl,
+    });
+  }
 
   Future<void> deleteCamera(int id) async {
     await _cms.delete('/admin/cameras/$id');

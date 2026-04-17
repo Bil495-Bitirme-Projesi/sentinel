@@ -102,6 +102,7 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_cameras',
         onPressed: () => context.go(AppRoutes.adminCameraNew),
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Yeni Ekle'),

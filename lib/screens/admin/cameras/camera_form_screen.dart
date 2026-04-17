@@ -16,7 +16,6 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _rtspUrlController = TextEditingController();
-  final _thresholdController = TextEditingController(text: '80'); // Varsayılan değer 80
 
   bool _isLoading = false;
   int? _parsedId;
@@ -36,7 +35,6 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
       final cam = await CameraService.instance.getCameraById(_parsedId!);
       _nameController.text = cam.name;
       _rtspUrlController.text = cam.rtspUrl;
-      // Eğer modelinizde threshold varsa onu da buraya set edebilirsiniz, yoksa 80 kalır.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +52,6 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
 
     final newName = _nameController.text.trim();
     final newUrl = _rtspUrlController.text.trim();
-    final thresholdVal = double.tryParse(_thresholdController.text.trim()) ?? 80.0;
 
     try {
       // --- FRONTEND ÇAKIŞMA KONTROLÜ BAŞLANGICI ---
@@ -92,10 +89,10 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
 
       if (_parsedId == null) {
         // Yeni Kamera Oluştur
-        await CameraService.instance.createCamera(newName, newUrl, thresholdVal);
+        await CameraService.instance.createCamera(newName, newUrl);
       } else {
         // Mevcut Kamerayı Güncelle
-        await CameraService.instance.updateCamera(_parsedId!, newName, newUrl, thresholdVal);
+        await CameraService.instance.updateCamera(_parsedId!, newName, newUrl);
       }
       if (mounted) context.go(AppRoutes.adminCameras);
 
@@ -133,7 +130,6 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
   void dispose() {
     _nameController.dispose();
     _rtspUrlController.dispose();
-    _thresholdController.dispose();
     super.dispose();
   }
 
@@ -179,20 +175,6 @@ class _CameraFormScreenState extends State<CameraFormScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  TextFormField(
-                    controller: _thresholdController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Algılama Hassasiyeti (Threshold)',
-                      prefixIcon: Icon(Icons.tune),
-                      suffixText: '%',
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Hassasiyet değeri gerekli';
-                      if (double.tryParse(val) == null) return 'Lütfen geçerli bir sayı girin';
-                      return null;
-                    },
-                  ),
                   const SizedBox(height: 32),
 
                   ElevatedButton(

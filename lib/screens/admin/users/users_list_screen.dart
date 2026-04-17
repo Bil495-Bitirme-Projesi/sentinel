@@ -117,8 +117,13 @@ class _UsersListScreenState extends State<UsersListScreen> {
 
                 // Eğer evet dediyse çıkış yap ve login'e yönlendir
                 if (confirm == true && mounted) {
-                  await AuthService.instance.logout();
-                  context.go(AppRoutes.login);
+                  try {
+                    await AuthService.instance.logout();
+                    // SessionNotifier tetiklendi, redirect guard login'e yönlendirecek
+                  } catch (e, st) {
+                    debugPrint('[Logout] HATA: $e');
+                    debugPrint('[Logout] StackTrace: $st');
+                  }
                 }
               },
             ),
@@ -126,6 +131,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
         ),
       // Yeni kullanıcı ekleme butonu
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_users',
         onPressed: () {
           context.go(AppRoutes.adminUserNew);
         },

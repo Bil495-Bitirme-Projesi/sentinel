@@ -103,7 +103,12 @@ class NotificationService {
     }
 
     // 2. FCM tarafında token'ı geçersiz kıl.
-    await _messaging.deleteToken();
+    try {
+      await _messaging.deleteToken();
+    } catch (_) {
+      // ignore: avoid_print
+      print('[FCM] unregister: FCM token silme başarısız (sessizce geçildi)');
+    }
   }
 
   // ---------------------------------------------------------------------------

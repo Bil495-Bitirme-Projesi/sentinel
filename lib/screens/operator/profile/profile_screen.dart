@@ -1,7 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:sentinel/core/auth/session_storage.dart';
-import 'package:sentinel/core/navigation/app_router.dart';
 import 'package:sentinel/services/auth_service.dart';
 
 /// Operatör profil ekranı.
@@ -11,7 +9,8 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     await AuthService.instance.logout();
-    if (context.mounted) context.go(AppRoutes.login);
+    // SessionNotifier.onSessionChanged() logout içinde tetikleniyor,
+    // redirect guard login'e yönlendiriyor — manuel context.go gerekmez.
   }
 
   @override
