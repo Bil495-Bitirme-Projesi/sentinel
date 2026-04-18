@@ -8,10 +8,12 @@ class AlertGroupScreen extends StatefulWidget {
     super.key,
     required this.group,
     required this.onAcknowledged,
+    this.showAcknowledgeButton = true,
   });
 
   final List<AlertSummary> group;
   final VoidCallback onAcknowledged;
+  final bool showAcknowledgeButton;
 
   @override
   State<AlertGroupScreen> createState() => _AlertGroupScreenState();
@@ -82,16 +84,12 @@ class _AlertGroupScreenState extends State<AlertGroupScreen> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Kamera #${alert.cameraId}'),
+                        Text(alert.cameraName ?? 'Kamera #${alert.cameraId}'),
                         Text(_fmt(alert.timestamp),
                             style: const TextStyle(fontSize: 12)),
-                        Text(
-                          'Skor: ${(alert.score * 100).toStringAsFixed(1)}%',
-                          style: const TextStyle(fontSize: 12),
-                        ),
                       ],
                     ),
-                    isThreeLine: true,
+                    isThreeLine: false,
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(
@@ -107,6 +105,7 @@ class _AlertGroupScreenState extends State<AlertGroupScreen> {
               },
             ),
           ),
+          if (widget.showAcknowledgeButton)
           Padding(
             padding: const EdgeInsets.all(16),
             child: SizedBox(
