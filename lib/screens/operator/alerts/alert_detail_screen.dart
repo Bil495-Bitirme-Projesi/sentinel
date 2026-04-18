@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:sentinel/models/alert_detail.dart';
 import 'package:sentinel/models/alert_status.dart';
+import 'package:sentinel/screens/operator/alerts/clip_player_screen.dart';
 import 'package:sentinel/services/alert_service.dart';
 
 class AlertDetailScreen extends StatefulWidget {
@@ -68,9 +69,9 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     try {
       final url = await AlertService.instance.getClipUrl(int.parse(widget.alertId));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Clip URL: $url')),
-        );
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ClipPlayerScreen(url: url),
+        ));
       }
     } catch (e) {
       if (mounted) {

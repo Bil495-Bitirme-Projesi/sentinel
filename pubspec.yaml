@@ -40,6 +40,8 @@ dependencies:
   firebase_core: ^4.6.0
   firebase_messaging: ^16.1.3
   flutter_local_notifications: ^18.0.0  # Heads-up bildirim kanalı + foreground bildirim
+  video_player: ^2.9.3     # Video oynatma (network URL)
+  chewie: ^1.10.0          # video_player üstüne hazır oynatıcı UI
 
 dev_dependencies:
   flutter_test:
