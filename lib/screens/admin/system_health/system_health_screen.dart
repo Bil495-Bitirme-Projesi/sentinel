@@ -87,7 +87,8 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
       final response = await CmsClient.instance.get(
         '$host/actuator/health',
         options: Options(
-          validateStatus: (status) => true, // Tüm HTTP kodlarını başarılı say ve veriyi al
+          validateStatus: (status) => true,
+          extra: {'skipAuth': true},
         ),
       );
 
@@ -167,7 +168,7 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading && _healthData == null) {
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 

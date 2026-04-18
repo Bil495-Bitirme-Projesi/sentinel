@@ -6,8 +6,13 @@ import 'package:sentinel/core/auth/session_storage.dart';
 /// 401 cevabında oturumu temizler ve GoRouter'ı login'e yönlendirir.
 class AuthInterceptor extends Interceptor {
   /// Her istekten ÖNCE çalışır → Authorization header'ını ekler.
+  /// `extra: {'skipAuth': true}` geçilirse token eklenmez.
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    if (options.extra['skipAuth'] == true) {
+      handler.next(options);
+      return;
+    }
     final token = SessionStorage.token;
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
