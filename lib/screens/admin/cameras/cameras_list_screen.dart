@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentinel/services/camera_service.dart';
-import 'package:sentinel/models/camera.dart';
+import 'package:sentinel/models/camera.dart'; // StreamStatus'un buradan geldiğinden emin ol
 import 'package:sentinel/core/navigation/app_router.dart';
 
 class CamerasListScreen extends StatefulWidget {
@@ -16,43 +16,10 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  GoRouter? _router;
-  String? _previousLocation;
-
   @override
   void initState() {
     super.initState();
     _fetchCameras();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final router = GoRouter.of(context);
-    if (_router != router) {
-      _router?.routerDelegate.removeListener(_onRouteChange);
-      _router = router;
-      _router!.routerDelegate.addListener(_onRouteChange);
-    }
-  }
-
-  @override
-  void dispose() {
-    _router?.routerDelegate.removeListener(_onRouteChange);
-    super.dispose();
-  }
-
-  void _onRouteChange() {
-    if (!mounted) return;
-    final location =
-        _router!.routerDelegate.currentConfiguration.uri.toString();
-    final wasInSubRoute = _previousLocation != null &&
-        _previousLocation != AppRoutes.adminCameras &&
-        _previousLocation!.startsWith(AppRoutes.adminCameras);
-    if (location == AppRoutes.adminCameras && wasInSubRoute) {
-      _fetchCameras();
-    }
-    _previousLocation = location;
   }
 
   Future<void> _fetchCameras() async {
@@ -85,11 +52,21 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
     if (confirm == true && mounted) {
       try {
         await CameraService.instance.deleteCamera(id);
-        _fetchCameras(); // Listeyi güncelle
+        _fetchCameras();
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
       }
     }
+  }
+
+  // YENİ: Relatif zaman hesaplayıcı (Örn: "2 dakika önce")
+  String _timeAgo(DateTime? date) {
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 0) return '${diff.inDays} gün önce';
+    if (diff.inHours > 0) return '${diff.inHours} saat önce';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} dakika önce';
+    return 'Az önce';
   }
 
   @override
@@ -102,7 +79,6 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_admin_cameras',
         onPressed: () => context.go(AppRoutes.adminCameraNew),
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Yeni Ekle'),
@@ -134,14 +110,62 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
         itemCount: _cameras.length,
         itemBuilder: (context, index) {
           final cam = _cameras[index];
+
+          // YENİ: Durum (Badge) ve İkonları belirleme
+          Color statusColor;
+          IconData statusIcon;
+
+          switch (cam.streamStatus) {
+            case StreamStatus.online:
+              statusColor = Colors.green;
+              statusIcon = Icons.circle;
+              break;
+            case StreamStatus.offline:
+              statusColor = Colors.red;
+              statusIcon = Icons.circle;
+              break;
+            case StreamStatus.unknown:
+            default:
+              statusColor = Colors.grey;
+              statusIcon = Icons.circle_outlined;
+              break;
+          }
+
           return Card(
             child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue.shade50,
-                child: const Icon(Icons.videocam, color: Colors.blue),
+              // İkonun yanına küçük durum noktasını (Badge) ekliyoruz
+              leading: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.blue.shade50,
+                    child: const Icon(Icons.videocam, color: Colors.blue),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: Icon(statusIcon, color: statusColor, size: 14),
+                  ),
+                ],
               ),
               title: Text(cam.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(cam.rtspUrl, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(cam.rtspUrl, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  // Eğer Heartbeat bilgisi varsa alt satırda göster
+                  if (cam.lastHeartbeatAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Son bağlantı: ${_timeAgo(cam.lastHeartbeatAt)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic)
+                      ),
+                    ),
+                ],
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
