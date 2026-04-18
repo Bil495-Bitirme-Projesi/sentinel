@@ -6,7 +6,7 @@ import 'package:sentinel/models/user_role.dart';
 import 'package:sentinel/screens/admin/admin_shell.dart';
 import 'package:sentinel/screens/admin/cameras/camera_form_screen.dart';
 import 'package:sentinel/screens/admin/cameras/cameras_list_screen.dart';
-import 'package:sentinel/screens/admin/stats/stats_screen.dart';
+import 'package:sentinel/screens/admin/system_health/system_health_screen.dart';
 import 'package:sentinel/screens/admin/users/add_user_screen.dart';
 import 'package:sentinel/screens/admin/users/user_detail_screen.dart';
 import 'package:sentinel/screens/admin/users/users_list_screen.dart';
@@ -42,7 +42,7 @@ abstract class AppRoutes {
   static const adminCameraNew = '/admin/cameras/new';
   static const adminUsers     = '/admin/users';
   static const adminUserNew   = '/admin/users/new';
-  static const adminStats     = '/admin/stats';
+  static const adminHealth    = '/admin/health';
 
   /// Kamera düzenleme: /admin/cameras/<id>/edit
   static String adminCameraEdit(String id) => '/admin/cameras/$id/edit';
@@ -179,12 +179,12 @@ final appRouter = GoRouter(
           ],
         ),
 
-        // Sekme 2 — İstatistik
+        // Sekme 2 — Sistem Sağlığı
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: AppRoutes.adminStats,
-              builder: (_, __) => const StatsScreen(),
+              path: AppRoutes.adminHealth,
+              builder: (_, __) => const SystemHealthScreen(),
             ),
           ],
         ),

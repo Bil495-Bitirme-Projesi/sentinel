@@ -55,14 +55,14 @@ class SystemHealth {
 }
 
 // --- Ekran ---
-class StatsScreen extends StatefulWidget {
-  const StatsScreen({super.key});
+class SystemHealthScreen extends StatefulWidget {
+  const SystemHealthScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
+  State<SystemHealthScreen> createState() => _SystemHealthScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> {
+class _SystemHealthScreenState extends State<SystemHealthScreen> {
   SystemHealth? _healthData;
   bool _isLoading = true;
   String? _errorMessage;
@@ -83,8 +83,9 @@ class _StatsScreenState extends State<StatsScreen> {
     try {
       // ÇÖZÜM: Dio'nun 500 veya 503 gibi durumlarda Exception fırlatmasını engelliyoruz.
       // Actuator bir bileşen DOWN olduğunda hata kodu dönse de bize JSON'ı verecek.
+      final host = Uri.parse(CmsClient.instance.options.baseUrl).origin;
       final response = await CmsClient.instance.get(
-        '/actuator/health',
+        '$host/actuator/health',
         options: Options(
           validateStatus: (status) => true, // Tüm HTTP kodlarını başarılı say ve veriyi al
         ),

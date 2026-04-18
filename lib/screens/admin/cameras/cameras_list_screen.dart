@@ -16,6 +16,35 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  GoRouter? _router;
+  String? _previousLocation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _router ??= GoRouter.of(context)
+      ..routerDelegate.addListener(_onRouteChange);
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChange);
+    super.dispose();
+  }
+
+  void _onRouteChange() {
+    if (!mounted) return;
+    final location =
+        _router!.routerDelegate.currentConfiguration.uri.toString();
+    final wasInSubRoute = _previousLocation != null &&
+        _previousLocation != AppRoutes.adminCameras &&
+        _previousLocation!.startsWith(AppRoutes.adminCameras);
+    if (location == AppRoutes.adminCameras && wasInSubRoute) {
+      _fetchCameras();
+    }
+    _previousLocation = location;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +108,7 @@ class _CamerasListScreenState extends State<CamerasListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_admin_cameras',
         onPressed: () => context.go(AppRoutes.adminCameraNew),
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Yeni Ekle'),

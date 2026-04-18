@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 /// Admin rolü için alt sekme kabuğu.
 ///
-/// 3 sekme: Kameralar | Kullanıcılar | İstatistik
+/// 3 sekme: Kameralar | Kullanıcılar | Sistem Sağlığı
 /// [navigationShell] her sekmenin widget ağacını bellekte tutar (state korunur).
 class AdminShell extends StatelessWidget {
   const AdminShell({super.key, required this.navigationShell});
@@ -32,9 +32,9 @@ class AdminShell extends StatelessWidget {
             label: 'Kullanıcılar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            activeIcon: Icon(Icons.bar_chart),
-            label: 'İstatistik',
+            icon: Icon(Icons.monitor_heart_outlined),
+            activeIcon: Icon(Icons.monitor_heart),
+            label: 'Sistem Sağlığı',
           ),
         ],
       ),
